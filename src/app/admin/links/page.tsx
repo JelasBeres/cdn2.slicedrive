@@ -1,14 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
-import { CalendarDays, Link2, Plus, Search, Video, Zap } from "lucide-react";
+import { CalendarDays, Link2, Search, Video, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { prisma } from "@/lib/prisma";
-import { LinkForm } from "./link-form";
 import { LinksTable } from "./links-table";
+import { NewLinkDialog } from "./new-link-dialog";
 
 type LinksPageProps = {
   searchParams: Promise<{ q?: string; page?: string }>;
@@ -84,22 +83,7 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
             </div>
             <Button type="submit">Cari</Button>
           </form>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="w-full md:w-auto">
-                <Plus className="h-4 w-4" /> New Link
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[520px] p-6">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-3 text-xl font-bold text-white">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--panel-pink)] text-[var(--panel-pink)]">+</span>
-                  Buat Link Baru
-                </DialogTitle>
-              </DialogHeader>
-              <LinkForm domains={domains} baseUrl={baseUrl} />
-            </DialogContent>
-          </Dialog>
+          <NewLinkDialog domains={domains} baseUrl={baseUrl} />
         </div>
         <LinksTable links={links} domains={domains} baseUrl={baseUrl} />
         <div className="flex items-center justify-between px-4 py-3 md:px-5">
