@@ -34,12 +34,13 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [links, total, totalLinks, clickAggregate, linksToday] = await Promise.all([
-    prisma.link.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE }),
+  const [links, total, totalLinks, clickAggregate, linksToday, domains] = await Promise.all([
+    prisma.link.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE, include: { domain: true } }),
     prisma.link.count({ where }),
     prisma.link.count(),
     prisma.link.aggregate({ _sum: { clicks: true } }),
     prisma.link.count({ where: { createdAt: { gte: today } } }),
+    prisma.domain.findMany({ orderBy: [{ isPrimary: "desc" }, { hostname: "asc" }] }),
   ]);
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
@@ -89,15 +90,18 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
                 <Plus className="h-4 w-4" /> New Link
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[840px] p-12">
               <DialogHeader>
-                <DialogTitle>Buat Link Baru</DialogTitle>
+                <DialogTitle className="flex items-center gap-4 text-3xl font-bold text-white">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--panel-pink)] text-[var(--panel-pink)]">+</span>
+                  Buat Link Baru
+                </DialogTitle>
               </DialogHeader>
-              <LinkForm />
+              <LinkForm domains={domains} baseUrl={baseUrl} />
             </DialogContent>
           </Dialog>
         </div>
-        <LinksTable links={links} baseUrl={baseUrl} />
+        <LinksTable links={links} domains={domains} baseUrl={baseUrl} />
         <div className="flex items-center justify-between px-4 py-3 md:px-5">
           <p className="text-xs text-[var(--panel-faint)]">Halaman {page} dari {totalPages}</p>
           <div className="flex gap-2">

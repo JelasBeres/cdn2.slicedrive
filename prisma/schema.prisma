@@ -25,13 +25,28 @@ model Link {
   id          String   @id @default(uuid())
   originalUrl String
   slug        String   @unique
+  domainId    String?
   clicks      Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  domain      Domain?  @relation(fields: [domainId], references: [id], onDelete: SetNull)
   clickEvents Click[]
 
   @@index([slug])
+  @@index([domainId])
   @@index([createdAt])
+}
+
+model Domain {
+  id        String   @id @default(uuid())
+  hostname  String   @unique
+  label     String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  links     Link[]
+
+  @@index([isPrimary])
 }
 
 model Click {

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const linkSchema = z.object({
   originalUrl: z.string().url("URL harus valid, contoh: https://example.com"),
+  domainId: z.string().trim().optional(),
   slug: z
     .string()
     .trim()

@@ -29,6 +29,7 @@ async function createUniqueSlug(suffix = "") {
 export async function createLink(formData: FormData): Promise<ActionResult> {
   const parsed = linkSchema.safeParse({
     originalUrl: formData.get("originalUrl"),
+    domainId: normalizeSlug(String(formData.get("domainId") ?? "")),
     slug: normalizeSlug(String(formData.get("slug") ?? "")),
     suffix: normalizeSlug(String(formData.get("suffix") ?? "")),
   });
@@ -43,8 +44,12 @@ export async function createLink(formData: FormData): Promise<ActionResult> {
       return { ok: false, message: "Slug tersebut tidak boleh digunakan." };
     }
 
+    const domain = parsed.data.domainId
+      ? await prisma.domain.findUnique({ where: { id: parsed.data.domainId }, select: { id: true } })
+      : await prisma.domain.findFirst({ where: { isPrimary: true }, select: { id: true } });
+
     await prisma.link.create({
-      data: { originalUrl: parsed.data.originalUrl, slug },
+      data: { originalUrl: parsed.data.originalUrl, slug, domainId: domain?.id },
     });
     revalidatePath("/admin/links");
     return { ok: true, message: "Shortlink berhasil dibuat." };
@@ -56,6 +61,7 @@ export async function createLink(formData: FormData): Promise<ActionResult> {
 export async function updateLink(id: string, formData: FormData): Promise<ActionResult> {
   const parsed = linkSchema.safeParse({
     originalUrl: formData.get("originalUrl"),
+    domainId: normalizeSlug(String(formData.get("domainId") ?? "")),
     slug: normalizeSlug(String(formData.get("slug") ?? "")),
     suffix: undefined,
   });
@@ -71,7 +77,11 @@ export async function updateLink(id: string, formData: FormData): Promise<Action
   try {
     await prisma.link.update({
       where: { id },
-      data: { originalUrl: parsed.data.originalUrl, slug: parsed.data.slug },
+      data: {
+        originalUrl: parsed.data.originalUrl,
+        slug: parsed.data.slug,
+        domainId: parsed.data.domainId || null,
+      },
     });
     revalidatePath("/admin/links");
     return { ok: true, message: "Shortlink berhasil diperbarui." };

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { ButtonHTMLAttributes } from "react";
-import type { Link as LinkModel } from "@prisma/client";
+import type { Domain, Link as LinkModel } from "@prisma/client";
 import { Copy, Edit3, Play, Trash2 } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,10 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { deleteLink } from "./actions";
 import { LinkForm } from "./link-form";
 
-type LinksTableProps = { links: LinkModel[]; baseUrl: string };
+type LinkWithDomain = LinkModel & { domain: Domain | null };
+type LinksTableProps = { links: LinkWithDomain[]; domains: Domain[]; baseUrl: string };
 
-export function LinksTable({ links, baseUrl }: LinksTableProps) {
-  const [editingLink, setEditingLink] = useState<LinkModel | null>(null);
+export function LinksTable({ links, domains, baseUrl }: LinksTableProps) {
+  const [editingLink, setEditingLink] = useState<LinkWithDomain | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleDelete(id: string) {
@@ -33,6 +34,14 @@ export function LinksTable({ links, baseUrl }: LinksTableProps) {
 
   function formatDate(date: Date) {
     return new Intl.DateTimeFormat("id-ID", { dateStyle: "short" }).format(date);
+  }
+
+  function linkHost(link: LinkWithDomain) {
+    return link.domain?.hostname ?? new URL(baseUrl).host;
+  }
+
+  function fullUrl(link: LinkWithDomain) {
+    return `https://${linkHost(link)}/${link.slug}`;
   }
 
   return (
@@ -60,12 +69,12 @@ export function LinksTable({ links, baseUrl }: LinksTableProps) {
               <TableRow key={link.id} className="panel-table-row hover:bg-[var(--panel-bg-2)]">
                 <TableCell className="px-5 py-3">
                   <div className="flex items-center gap-2.5">
-                    <a href={`${baseUrl}/${link.slug}`} target="_blank" rel="noreferrer" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--panel-pink-border)] bg-[var(--panel-pink-bg)]">
+                    <a href={fullUrl(link)} target="_blank" rel="noreferrer" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--panel-pink-border)] bg-[var(--panel-pink-bg)]">
                       <Play className="ml-0.5 h-3 w-3 fill-[var(--panel-pink)] text-[var(--panel-pink)]" />
                     </a>
                     <div className="min-w-0">
                       <div className="max-w-[180px] truncate text-[13px] font-medium">{link.slug}</div>
-                      <div className="mt-0.5 text-[11px] text-[var(--panel-pink)] opacity-80">{new URL(baseUrl).host}</div>
+                      <div className="mt-0.5 text-[11px] text-[var(--panel-pink)] opacity-80">{linkHost(link)}</div>
                     </div>
                   </div>
                 </TableCell>
@@ -78,7 +87,7 @@ export function LinksTable({ links, baseUrl }: LinksTableProps) {
                 </TableCell>
                 <TableCell className="px-5 py-3 text-right">
                   <div className="flex justify-end gap-1">
-                  <IconButton title="Salin" onClick={() => void copyUrl(`${baseUrl}/${link.slug}`)}>
+                  <IconButton title="Salin" onClick={() => void copyUrl(fullUrl(link))}>
                     <Copy className="h-3.5 w-3.5" />
                   </IconButton>
                   <Dialog open={editingLink?.id === link.id} onOpenChange={(open) => setEditingLink(open ? link : null)}>
@@ -91,7 +100,7 @@ export function LinksTable({ links, baseUrl }: LinksTableProps) {
                       <DialogHeader>
                         <DialogTitle>Edit Shortlink</DialogTitle>
                       </DialogHeader>
-                      <LinkForm mode="edit" link={link} onDone={() => setEditingLink(null)} />
+                      <LinkForm mode="edit" link={link} domains={domains} baseUrl={baseUrl} onDone={() => setEditingLink(null)} />
                     </DialogContent>
                   </Dialog>
                   <IconButton title="Hapus" danger disabled={isPending} onClick={() => handleDelete(link.id)}>
@@ -113,12 +122,12 @@ export function LinksTable({ links, baseUrl }: LinksTableProps) {
           links.map((link) => (
             <div key={link.id} className="rounded-md border border-[var(--panel-border-2)] bg-[var(--panel-bg-2)] p-3">
               <div className="mb-2 flex items-center gap-2">
-                <a href={`${baseUrl}/${link.slug}`} target="_blank" rel="noreferrer" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--panel-pink-border)] bg-[var(--panel-pink-bg)]">
+                <a href={fullUrl(link)} target="_blank" rel="noreferrer" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--panel-pink-border)] bg-[var(--panel-pink-bg)]">
                   <Play className="ml-0.5 h-3 w-3 fill-[var(--panel-pink)] text-[var(--panel-pink)]" />
                 </a>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] font-semibold">{link.slug}</div>
-                  <div className="text-[11px] text-[var(--panel-pink)]">{new URL(baseUrl).host}</div>
+                  <div className="text-[11px] text-[var(--panel-pink)]">{linkHost(link)}</div>
                 </div>
                 <span className={`rounded px-2.5 py-1 text-xs font-bold ${link.clicks > 1000 ? "bg-[#2a1040] text-[#b94fd6]" : "bg-[#1a2a1a] text-[var(--panel-green)]"}`}>
                   {formatClicks(link.clicks)}
@@ -128,10 +137,10 @@ export function LinksTable({ links, baseUrl }: LinksTableProps) {
               <div className="flex items-center justify-between border-t border-[var(--panel-border)] pt-2">
                 <span className="text-[11px] text-[var(--panel-faint)]">{formatDate(link.createdAt)}</span>
                 <div className="flex gap-1">
-                  <IconButton title="Salin" onClick={() => void copyUrl(`${baseUrl}/${link.slug}`)}><Copy className="h-3.5 w-3.5" /></IconButton>
+                  <IconButton title="Salin" onClick={() => void copyUrl(fullUrl(link))}><Copy className="h-3.5 w-3.5" /></IconButton>
                   <Dialog open={editingLink?.id === link.id} onOpenChange={(open) => setEditingLink(open ? link : null)}>
                     <DialogTrigger asChild><IconButton title="Edit"><Edit3 className="h-3.5 w-3.5" /></IconButton></DialogTrigger>
-                    <DialogContent><DialogHeader><DialogTitle>Edit Shortlink</DialogTitle></DialogHeader><LinkForm mode="edit" link={link} onDone={() => setEditingLink(null)} /></DialogContent>
+                    <DialogContent><DialogHeader><DialogTitle>Edit Shortlink</DialogTitle></DialogHeader><LinkForm mode="edit" link={link} domains={domains} baseUrl={baseUrl} onDone={() => setEditingLink(null)} /></DialogContent>
                   </Dialog>
                   <IconButton title="Hapus" danger disabled={isPending} onClick={() => handleDelete(link.id)}><Trash2 className="h-3.5 w-3.5" /></IconButton>
                 </div>

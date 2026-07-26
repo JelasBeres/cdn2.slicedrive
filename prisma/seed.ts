@@ -17,6 +17,22 @@ async function main() {
     update: { password: hashedPassword },
     create: { email, password: hashedPassword, name: "Admin" },
   });
+
+  const domains = [
+    { hostname: "videy.fun", label: "Main", isPrimary: true },
+    { hostname: "cdn.videy.fun", label: "CDN", isPrimary: false },
+    { hostname: "media.videy.fun", label: "Media", isPrimary: false },
+    { hostname: "video.videy.fun", label: "Video", isPrimary: false },
+    { hostname: "cdn2.videy.fun", label: "CDN 2", isPrimary: false },
+  ];
+
+  for (const domain of domains) {
+    await prisma.domain.upsert({
+      where: { hostname: domain.hostname },
+      update: { label: domain.label, isPrimary: domain.isPrimary },
+      create: domain,
+    });
+  }
 }
 
 main()
