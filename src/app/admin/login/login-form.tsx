@@ -2,7 +2,6 @@
 
 import { FormEvent, useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { Grid2X2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -22,16 +20,14 @@ export function LoginForm() {
     startTransition(async () => {
       const result = await signIn("credentials", {
         password: formData.get("password"),
-        redirect: false,
+        callbackUrl: "/admin/links",
+        redirect: true,
       });
 
       if (result?.error) {
         setError("Password salah.");
         return;
       }
-
-      router.push("/admin/links");
-      router.refresh();
     });
   }
 
