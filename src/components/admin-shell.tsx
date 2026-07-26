@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Grid2X2, Link2, Plus } from "lucide-react";
+import { Grid2X2, Link2, Plus, Settings } from "lucide-react";
 
 import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,13 @@ export function AdminShell({ children }: AdminShellProps) {
               title="Links"
             >
               <Link2 className="h-4 w-4 text-[var(--panel-muted)]" />
+            </Link>
+            <Link
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--panel-border)] bg-[var(--panel-bg-2)] hover:bg-[var(--panel-bg-3)]"
+              href="/admin/settings"
+              title="Settings"
+            >
+              <Settings className="h-4 w-4 text-[var(--panel-muted)]" />
             </Link>
             <LogoutButton />
           </div>
