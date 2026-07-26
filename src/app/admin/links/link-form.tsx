@@ -6,6 +6,7 @@ import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ActionToast } from "@/components/action-toast";
 import { createLink, updateLink } from "./actions";
 
 type LinkFormProps = {
@@ -19,6 +20,7 @@ type LinkFormProps = {
 export function LinkForm({ mode = "create", link, domains = [], baseUrl = "https://videy.fun", onDone }: LinkFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [message, setMessage] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [slug, setSlug] = useState(link?.slug ?? "");
   const [domainId, setDomainId] = useState(link?.domainId ?? domains.find((domain) => domain.isPrimary)?.id ?? domains[0]?.id ?? "");
   const [isPending, startTransition] = useTransition();
@@ -34,6 +36,8 @@ export function LinkForm({ mode = "create", link, domains = [], baseUrl = "https
     startTransition(async () => {
       const result = mode === "edit" && link ? await updateLink(link.id, formData) : await createLink(formData);
       setMessage(result.message);
+      setToast({ message: result.message, type: result.ok ? "success" : "error" });
+      window.setTimeout(() => setToast(null), 2500);
       if (result.ok) {
         formRef.current?.reset();
         onDone?.();
@@ -43,6 +47,7 @@ export function LinkForm({ mode = "create", link, domains = [], baseUrl = "https
 
   return (
     <form ref={formRef} action={handleSubmit} className="space-y-4">
+      {toast ? <ActionToast message={toast.message} type={toast.type} /> : null}
       <div>
         <Label htmlFor={mode === "edit" ? `domainId-${link?.id}` : "domainId"}>Domain</Label>
         <div className="relative">

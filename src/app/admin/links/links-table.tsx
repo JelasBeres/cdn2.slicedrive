@@ -7,6 +7,7 @@ import { Copy, Edit3, Play, Trash2 } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ActionToast } from "@/components/action-toast";
 import { deleteLink } from "./actions";
 import { LinkForm } from "./link-form";
 
@@ -15,17 +16,25 @@ type LinksTableProps = { links: LinkWithDomain[]; domains: Domain[]; baseUrl: st
 
 export function LinksTable({ links, domains, baseUrl }: LinksTableProps) {
   const [editingLink, setEditingLink] = useState<LinkWithDomain | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  function showToast(message: string, type: "success" | "error" = "success") {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 2500);
+  }
 
   function handleDelete(id: string) {
     if (!window.confirm("Yakin ingin menghapus shortlink ini?")) return;
     startTransition(async () => {
-      await deleteLink(id);
+      const result = await deleteLink(id);
+      showToast(result.message, result.ok ? "success" : "error");
     });
   }
 
   async function copyUrl(url: string) {
     await navigator.clipboard.writeText(url);
+    showToast(`Link berhasil disalin: ${url}`);
   }
 
   function formatClicks(clicks: number) {
@@ -46,6 +55,7 @@ export function LinksTable({ links, domains, baseUrl }: LinksTableProps) {
 
   return (
     <>
+      {toast ? <ActionToast message={toast.message} type={toast.type} /> : null}
       <div className="panel-scrollbar hidden overflow-x-auto md:block">
       <Table className="text-white">
         <TableHeader>
