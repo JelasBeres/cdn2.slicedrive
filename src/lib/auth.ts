@@ -11,15 +11,16 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Admin",
       credentials: {
-        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) return null;
+        if (!credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        const adminEmail = process.env.ADMIN_EMAIL;
+
+        const user = adminEmail
+          ? await prisma.user.findUnique({ where: { email: adminEmail } })
+          : await prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
         if (!user) return null;
 
         const validPassword = await bcrypt.compare(

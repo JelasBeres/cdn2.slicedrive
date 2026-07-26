@@ -21,13 +21,12 @@ export function LoginForm() {
 
     startTransition(async () => {
       const result = await signIn("credentials", {
-        email: formData.get("email"),
         password: formData.get("password"),
         redirect: false,
       });
 
       if (result?.error) {
-        setError("Email atau password salah.");
+        setError("Password salah.");
         return;
       }
 
@@ -44,10 +43,6 @@ export function LoginForm() {
       <div className="text-xl font-bold">CDN Panel</div>
       <div className="mb-6 text-xs text-[var(--panel-faint)]">Shortlink Management System</div>
       <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email Admin</Label>
-            <Input id="email" name="email" type="email" placeholder="admin@example.com" required />
-          </div>
           <div>
             <Label htmlFor="password">Password Admin</Label>
             <Input id="password" name="password" type="password" placeholder="••••••••" required />
