@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { CalendarDays, Link2, Plus, Search, Video, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ const PAGE_SIZE = 10;
 
 export default async function LinksPage({ searchParams }: LinksPageProps) {
   const params = await searchParams;
+  const requestHeaders = await headers();
   const query = params.q?.trim() ?? "";
   const page = Math.max(Number(params.page ?? "1") || 1, 1);
   const skip = (page - 1) * PAGE_SIZE;
@@ -40,7 +42,9 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
     prisma.link.count({ where: { createdAt: { gte: today } } }),
   ]);
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  const proto = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  const baseUrl = `${proto}://${host}`;
   const totalClicks = clickAggregate._sum.clicks ?? 0;
 
   function pageHref(targetPage: number) {
