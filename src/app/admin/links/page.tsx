@@ -90,10 +90,10 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
                 <Plus className="h-4 w-4" /> New Link
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[840px] p-12">
+            <DialogContent className="max-w-[520px] p-6">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-4 text-3xl font-bold text-white">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--panel-pink)] text-[var(--panel-pink)]">+</span>
+                <DialogTitle className="flex items-center gap-3 text-xl font-bold text-white">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--panel-pink)] text-[var(--panel-pink)]">+</span>
                   Buat Link Baru
                 </DialogTitle>
               </DialogHeader>
