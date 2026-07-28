@@ -4,9 +4,11 @@ declare module "lucide-react" {
   export type LucideIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
   export const Activity: LucideIcon;
+  export const BarChart3: LucideIcon;
   export const CalendarDays: LucideIcon;
   export const Copy: LucideIcon;
   export const Edit3: LucideIcon;
+  export const ExternalLink: LucideIcon;
   export const Grid2X2: LucideIcon;
   export const Globe2: LucideIcon;
   export const KeyRound: LucideIcon;
