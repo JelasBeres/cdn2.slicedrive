@@ -55,7 +55,7 @@ function trackingRedirectHtml(targetUrl: string, slug: string) {
     })();
     window.setTimeout(function() {
       window.location.replace(${safeTargetUrl});
-    }, 650);
+    }, 300);
   </script>
   <noscript>
     <meta http-equiv="refresh" content="1;url=${targetUrl.replace(/"/g, "&quot;")}" />
