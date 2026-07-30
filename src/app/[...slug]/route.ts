@@ -16,14 +16,17 @@ type CachedLink = {
 
 const globalForRedirects = globalThis as unknown as {
   shortlinkCache?: Map<string, CachedLink>;
+  shortlinkInFlight?: Map<string, Promise<CachedLink | null>>;
   pendingClicks?: Map<string, number>;
   clickFlushTimer?: ReturnType<typeof setTimeout>;
 };
 
 const linkCache = globalForRedirects.shortlinkCache ?? new Map<string, CachedLink>();
+const inFlightLinks = globalForRedirects.shortlinkInFlight ?? new Map<string, Promise<CachedLink | null>>();
 const pendingClicks = globalForRedirects.pendingClicks ?? new Map<string, number>();
 
 globalForRedirects.shortlinkCache = linkCache;
+globalForRedirects.shortlinkInFlight = inFlightLinks;
 globalForRedirects.pendingClicks = pendingClicks;
 
 type RouteContext = {
@@ -82,27 +85,45 @@ async function getLink(slug: string) {
     return cached;
   }
 
-  try {
-    const link = await prisma.link.findUnique({
+  const inFlight = inFlightLinks.get(slug);
+
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const query = prisma.link
+    .findUnique({
       where: { slug },
       select: { id: true, originalUrl: true },
+    })
+    .then((link) => {
+      if (!link) return null;
+
+      const fresh = { ...link, expiresAt: now + LINK_CACHE_TTL_MS };
+      linkCache.set(slug, fresh);
+
+      return fresh;
+    })
+    .catch((error) => {
+      console.error("Failed to load redirect link", error);
+
+      if (cached) {
+        cached.expiresAt = Date.now() + CLICK_FLUSH_DELAY_MS;
+        return cached;
+      }
+
+      throw error;
+    })
+    .finally(() => {
+      inFlightLinks.delete(slug);
     });
 
-    if (!link) return null;
+  inFlightLinks.set(slug, query);
 
-    const fresh = { ...link, expiresAt: now + LINK_CACHE_TTL_MS };
-    linkCache.set(slug, fresh);
-
-    return fresh;
-  } catch (error) {
-    console.error("Failed to load redirect link", error);
-
-    if (cached) {
-      cached.expiresAt = now + CLICK_FLUSH_DELAY_MS;
-      return cached;
-    }
-
-    throw error;
+  try {
+    return await query;
+  } catch {
+    return null;
   }
 }
 
