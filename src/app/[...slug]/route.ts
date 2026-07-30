@@ -5,6 +5,27 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const LINK_CACHE_TTL_MS = 60_000;
+const CLICK_FLUSH_DELAY_MS = 5_000;
+
+type CachedLink = {
+  id: string;
+  originalUrl: string;
+  expiresAt: number;
+};
+
+const globalForRedirects = globalThis as unknown as {
+  shortlinkCache?: Map<string, CachedLink>;
+  pendingClicks?: Map<string, number>;
+  clickFlushTimer?: ReturnType<typeof setTimeout>;
+};
+
+const linkCache = globalForRedirects.shortlinkCache ?? new Map<string, CachedLink>();
+const pendingClicks = globalForRedirects.pendingClicks ?? new Map<string, number>();
+
+globalForRedirects.shortlinkCache = linkCache;
+globalForRedirects.pendingClicks = pendingClicks;
+
 type RouteContext = {
   params: Promise<{ slug: string[] }>;
 };
@@ -53,25 +74,70 @@ function trackingRedirectHtml(targetUrl: string, slug: string) {
 </html>`;
 }
 
-export async function GET(request: NextRequest, { params }: RouteContext) {
+async function getLink(slug: string) {
+  const cached = linkCache.get(slug);
+  const now = Date.now();
+
+  if (cached && cached.expiresAt > now) {
+    return cached;
+  }
+
+  try {
+    const link = await prisma.link.findUnique({
+      where: { slug },
+      select: { id: true, originalUrl: true },
+    });
+
+    if (!link) return null;
+
+    const fresh = { ...link, expiresAt: now + LINK_CACHE_TTL_MS };
+    linkCache.set(slug, fresh);
+
+    return fresh;
+  } catch (error) {
+    console.error("Failed to load redirect link", error);
+
+    if (cached) {
+      cached.expiresAt = now + CLICK_FLUSH_DELAY_MS;
+      return cached;
+    }
+
+    throw error;
+  }
+}
+
+function queueClick(linkId: string) {
+  pendingClicks.set(linkId, (pendingClicks.get(linkId) ?? 0) + 1);
+
+  if (globalForRedirects.clickFlushTimer) return;
+
+  globalForRedirects.clickFlushTimer = setTimeout(() => {
+    const clicks = Array.from(pendingClicks.entries());
+    pendingClicks.clear();
+    globalForRedirects.clickFlushTimer = undefined;
+
+    for (const [id, count] of clicks) {
+      void prisma.link
+        .update({
+          where: { id },
+          data: { clicks: { increment: count } },
+        })
+        .catch(() => {
+          pendingClicks.set(id, (pendingClicks.get(id) ?? 0) + count);
+        });
+    }
+  }, CLICK_FLUSH_DELAY_MS);
+}
+
+export async function GET(_request: NextRequest, { params }: RouteContext) {
   const { slug: slugParts } = await params;
   const slug = slugParts.join("/");
 
-  const link = await prisma.link.findUnique({
-    where: { slug },
-    select: { id: true, originalUrl: true },
-  });
+  const link = await getLink(slug).catch(() => null);
 
   if (!link) notFound();
 
-  void prisma.link
-    .update({
-      where: { id: link.id },
-      data: { clicks: { increment: 1 } },
-    })
-    .catch(() => {
-      // Redirect speed is more important than click-counter persistence.
-    });
+  queueClick(link.id);
 
   return new Response(trackingRedirectHtml(link.originalUrl, slug), {
     headers: {
