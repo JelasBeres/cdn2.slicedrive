@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { Domain, Link as LinkModel } from "@prisma/client";
 import { headers } from "next/headers";
 import { CalendarDays, Link2, Search, Video, Zap } from "lucide-react";
 
@@ -12,6 +13,8 @@ import { NewLinkDialog } from "./new-link-dialog";
 type LinksPageProps = {
   searchParams: Promise<{ q?: string; page?: string }>;
 };
+
+type LinkWithDomain = LinkModel & { domain: Domain | null };
 
 const PAGE_SIZE = 10;
 
@@ -33,19 +36,38 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [links, total, totalLinks, clickAggregate, linksToday, domains] = await Promise.all([
-    prisma.link.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE, include: { domain: true } }),
-    prisma.link.count({ where }),
-    prisma.link.count(),
-    prisma.link.aggregate({ _sum: { clicks: true } }),
-    prisma.link.count({ where: { createdAt: { gte: today } } }),
-    prisma.domain.findMany({ orderBy: [{ isPrimary: "desc" }, { hostname: "asc" }] }),
-  ]);
+  let links: LinkWithDomain[] = [];
+  let total = 0;
+  let totalLinks = 0;
+  let totalClicks = 0;
+  let linksToday = 0;
+  let domains: Domain[] = [];
+  let dbError = false;
+
+  try {
+    const [linksResult, totalResult, totalLinksResult, clickAggregate, linksTodayResult, domainsResult] = await Promise.all([
+      prisma.link.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE, include: { domain: true } }),
+      prisma.link.count({ where }),
+      prisma.link.count(),
+      prisma.link.aggregate({ _sum: { clicks: true } }),
+      prisma.link.count({ where: { createdAt: { gte: today } } }),
+      prisma.domain.findMany({ orderBy: [{ isPrimary: "desc" }, { hostname: "asc" }] }),
+    ]);
+
+    links = linksResult;
+    total = totalResult;
+    totalLinks = totalLinksResult;
+    totalClicks = clickAggregate._sum.clicks ?? 0;
+    linksToday = linksTodayResult;
+    domains = domainsResult;
+  } catch (error) {
+    console.error("Failed to load links admin page", error);
+    dbError = true;
+  }
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
   const proto = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
   const baseUrl = `${proto}://${host}`;
-  const totalClicks = clickAggregate._sum.clicks ?? 0;
 
   function pageHref(targetPage: number) {
     const search = new URLSearchParams();
@@ -56,6 +78,11 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
 
   return (
     <div className="space-y-5">
+      {dbError ? (
+        <div className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-[var(--panel-red)]">
+          Database sedang lambat/timeout. Coba reload beberapa detik lagi.
+        </div>
+      ) : null}
       <section className="grid grid-cols-3 gap-2 md:gap-4">
         <StatCard color="blue" icon={<Link2 className="h-9 w-9" />} label="Total Link" value={totalLinks.toLocaleString("id-ID")} sub="Aktif tersimpan" />
         <StatCard color="pink" icon={<Zap className="h-9 w-9" />} label="Total Klik" value={totalClicks.toLocaleString("id-ID")} sub="Semua waktu" />
