@@ -18,7 +18,7 @@ export default function HistatsPage() {
               <BarChart3 className="h-5 w-5 text-[var(--panel-pink)]" /> Histats Traffic
             </h2>
             <p className="text-xs text-[var(--panel-faint)]">
-              Statistik visitor dari script Histats ID {HISTATS_ID} yang sudah dipasang global.
+              Statistik visitor dari script Histats ID {HISTATS_ID} yang berjalan di halaman redirect shortlink.
             </p>
           </div>
           <div className="flex gap-2">
